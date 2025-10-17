@@ -4,7 +4,7 @@ import os
 import streamlit as st
 from google import genai
 from google.genai import types
-from text_utils import count_words, strip_markdown
+from text_utils import count_words, contains_numbers
 from config import MODEL_PRO, MODEL_FLASH
 
 
@@ -26,9 +26,18 @@ class GeminiAssistant:
             st.stop()
         
         self.client = genai.Client(api_key=api_key)
+        
+        # Tools
         self.grounding_tool = types.Tool(google_search=types.GoogleSearch())
+        self.code_execution_tool = types.Tool(code_execution=types.ToolCodeExecution())
+        
+        # Configs with different tool combinations
+        self.config_with_search_and_code = types.GenerateContentConfig(
+            tools=[self.grounding_tool, self.code_execution_tool]
+        )
         self.config_with_search = types.GenerateContentConfig(tools=[self.grounding_tool])
-        self.config_no_search = types.GenerateContentConfig()
+        self.config_with_code = types.GenerateContentConfig(tools=[self.code_execution_tool])
+        self.config_no_tools = types.GenerateContentConfig()
     
     def log_progress(self, message):
         """Log progress message with live callback."""
@@ -45,11 +54,22 @@ class GeminiAssistant:
             history_context += f"\n{msg['role'].upper()}: {msg['content']}\n"
         return history_context
     
+    def _get_config(self, use_search, use_code_execution):
+        """Get appropriate config based on tool requirements."""
+        if use_search and use_code_execution:
+            return self.config_with_search_and_code
+        elif use_search:
+            return self.config_with_search
+        elif use_code_execution:
+            return self.config_with_code
+        else:
+            return self.config_no_tools
+    
     def quality_agent(self, prompt, use_search, conversation_history):
         """Create quality criteria including word count requirements."""
         self.log_progress(f"📋 Creating quality criteria ({MODEL_PRO})...")
         
-        config = self.config_with_search if use_search else self.config_no_search
+        config = self.config_with_search if use_search else self.config_no_tools
         history_context = self._build_history_context(conversation_history)
         
         criteria_prompt = f"""Create quality criteria for this prompt.
@@ -77,13 +97,25 @@ USER PROMPT:
             return None
     
     def grader_agent(self, response_text, criteria, use_search):
-        """Grade response quality including word count verification."""
+        """
+        Grade response quality including word count verification.
+        Uses code execution only if response contains numbers (for word counting).
+        """
         self.log_progress("🔍 Checking quality + word count...")
+        
+        # Determine if grader should use code execution
+        # Only enable code execution if response contains numbers (for accurate word counting)
+        has_numbers = contains_numbers(response_text)
+        use_code_execution = has_numbers
+        
+        if use_code_execution:
+            self.log_progress("💻 Grader using code execution for numeric verification...")
         
         words, sentences, chars = count_words(response_text)
         word_count_info = f"\nACTUAL WORD COUNT: {words} words, {sentences} sentences, {chars} characters"
         
-        config = self.config_with_search if use_search else self.config_no_search
+        # Get appropriate config for grader
+        config = self._get_config(use_search, use_code_execution)
         
         grader_prompt = f"""Grade this response. Reply ONLY 'pass' or 'no'.
 
@@ -126,7 +158,7 @@ RESPONSE:
         word_info = f"\nCurrent word count: {words} words"
         history_context = self._build_history_context(conversation_history)
         
-        config = self.config_with_search if use_search else self.config_no_search
+        config = self.config_with_search if use_search else self.config_no_tools
         
         refiner_prompt = f"""Improve this response to meet ALL criteria.
 
@@ -160,8 +192,9 @@ Provide only the improved response."""
             self.log_progress(f"❌ Refiner error: {str(e)}")
             return None
     
-    def generate_response(self, prompt, file_contexts, use_search, use_agents, max_refinements, conversation_history=None):
-        """Generate response with optional multi-agent refinement."""
+    def generate_response(self, prompt, file_contexts, use_search, use_code_execution, 
+                         use_agents, max_refinements, conversation_history=None):
+        """Generate response with optional multi-agent refinement and code execution."""
         self.current_response = ""
         
         try:
@@ -178,11 +211,17 @@ Provide only the improved response."""
             else:
                 full_prompt = history_context + prompt
             
-            # Initial response
-            search_status = "with Google Search" if use_search else "from knowledge"
-            self.log_progress(f"🚀 Generating initial response {search_status}...")
+            # Initial response with appropriate tools
+            tools_status = []
+            if use_search:
+                tools_status.append("Google Search")
+            if use_code_execution:
+                tools_status.append("Code Execution")
             
-            config = self.config_with_search if use_search else self.config_no_search
+            tools_msg = f"with {' + '.join(tools_status)}" if tools_status else "from knowledge"
+            self.log_progress(f"🚀 Generating initial response {tools_msg}...")
+            
+            config = self._get_config(use_search, use_code_execution)
             
             response = self.client.models.generate_content(
                 model=MODEL_PRO,
@@ -190,8 +229,9 @@ Provide only the improved response."""
                 config=config
             )
             
+            # Keep original response without modification
             current = response.text
-            self.current_response = strip_markdown(current)
+            self.current_response = current
             
             # If agents disabled, return immediately
             if not use_agents:
@@ -224,7 +264,7 @@ Provide only the improved response."""
                         break
                     
                     current = new_response
-                    self.current_response = strip_markdown(current)
+                    self.current_response = current
             else:
                 self.log_progress(f"⚠️ Max iterations ({max_refinements}) reached")
             

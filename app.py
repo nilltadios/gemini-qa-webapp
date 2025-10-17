@@ -253,7 +253,7 @@ Provide only the improved response."""
             config = self.config_with_search if use_search else self.config_no_search
 
             response = self.client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-2.5-pro',
                 contents=full_prompt,
                 config=config
             )
@@ -469,7 +469,7 @@ def main():
 
     # Footer
     st.markdown("---")
-    st.caption("Powered by Google Gemini 2.5 Flash | Multi-Agent Quality Verification System")
+    st.caption("Powered by Google Gemini 2.5 Pro | Multi-Agent Quality Verification System")
 
 if __name__ == "__main__":
     main()

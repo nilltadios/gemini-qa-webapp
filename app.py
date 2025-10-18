@@ -14,7 +14,9 @@ from config import (
     PAGE_TITLE, PAGE_ICON, SUPPORTED_EXTENSIONS,
     DEFAULT_MAX_REFINEMENTS
 )
-
+import pytz
+# Set the timezone for New York
+ny_timezone = pytz.timezone("America/New_York")
 
 def init_session_state():
     """Initialize all session state variables."""
@@ -191,7 +193,7 @@ def render_edit_mode():
         if st.button("✅ Save & Generate", type="primary", use_container_width=True):
             st.session_state.conversation_thread = st.session_state.conversation_thread[:edit_idx]
             st.session_state.edit_mode = None
-            timestamp = datetime.now().strftime("%H:%M:%S")
+            timestamp = datetime.now(ny_timezone).strftime("%H:%M:%S")
             st.session_state.conversation_thread.append({
                 'role': 'user',
                 'content': edited_prompt,
@@ -225,7 +227,7 @@ def render_prompt_input():
         generate_button = st.button("✨ GENERATE RESPONSE ✨", type="primary", use_container_width=True)
 
     if generate_button and prompt.strip():
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = datetime.now(ny_timezone).strftime("%H:%M:%S")
         st.session_state.conversation_thread.append({
             'role': 'user',
             'content': prompt,
@@ -286,7 +288,7 @@ def process_generation(use_search, use_code_execution, use_agents, max_refinemen
         )
 
         # Add response to thread
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = datetime.now(ny_timezone).strftime("%H:%M:%S")
         st.session_state.conversation_thread.append({
             'role': 'assistant',
             'content': response,
@@ -300,7 +302,7 @@ def process_generation(use_search, use_code_execution, use_agents, max_refinemen
         st.error(f"❌ Error during generation: {str(e)}")
         # Still add partial response if available
         if st.session_state.assistant.current_response:
-            timestamp = datetime.now().strftime("%H:%M:%S")
+            timestamp = datetime.now(ny_timezone).strftime("%H:%M:%S")
             st.session_state.conversation_thread.append({
                 'role': 'assistant',
                 'content': st.session_state.assistant.current_response + f"\n\n[ERROR: {str(e)}]",

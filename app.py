@@ -142,7 +142,7 @@ def render_conversation_thread():
                 st.markdown(f'<div class="chat-message user-message">', unsafe_allow_html=True)
                 col1, col2 = st.columns([6, 1])
                 with col1:
-                    st.markdown(f"**👤 You** *({timestamp})*")
+                    st.markdown(f"**👤 You** *({timestamp} EDT)*")
                     st.markdown(message['content'])
                 with col2:
                     if st.button("✏️ Edit", key=f"edit_{idx}", help="Edit and fork this message"):
@@ -152,7 +152,7 @@ def render_conversation_thread():
         else:
             with st.container():
                 st.markdown(f'<div class="chat-message assistant-message">', unsafe_allow_html=True)
-                st.markdown(f"**🤖 Assistant** *({timestamp})*")
+                st.markdown(f"**🤖 Assistant** *({timestamp} EDT)*")
                 st.markdown(message['content'])
 
                 # Word count statistics

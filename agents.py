@@ -2,6 +2,7 @@
 
 import os
 import streamlit as st
+from threading import Thread # Add this line
 from google import genai
 from google.genai import types
 from text_utils import count_words, contains_numbers
@@ -193,7 +194,7 @@ Provide only the improved response."""
             return None
     
     def generate_response(self, prompt, file_contexts, use_search, use_code_execution, 
-                     use_agents, max_refinements, conversation_history=None):
+                         use_agents, max_refinements, conversation_history=None):
         """Generate response with optional multi-agent refinement and code execution."""
         self.current_response = ""
         
@@ -210,40 +211,60 @@ Provide only the improved response."""
                 full_prompt = history_context + context_section + "=== USER PROMPT ===\n\n" + prompt
             else:
                 full_prompt = history_context + prompt
-            
-            # Initial response with appropriate tools
-            tools_status = []
-            if use_search:
-                tools_status.append("Google Search")
-            if use_code_execution:
-                tools_status.append("Code Execution")
-            
-            tools_msg = f"with {' + '.join(tools_status)}" if tools_status else "from knowledge"
-            self.log_progress(f"🚀 Generating initial response {tools_msg}...")
-            
-            config = self._get_config(use_search, use_code_execution)
-            
-            response = self.client.models.generate_content(
-                model=MODEL_PRO,
-                contents=full_prompt,
-                config=config
-            )
-            
-            # Keep original response without modification
-            current = response.text
-            self.current_response = current
-            
-            # If agents disabled, return immediately
+
+            # If agents are disabled, generate a simple response and return
             if not use_agents:
+                self.log_progress("🚀 Generating simple response...")
+                config = self._get_config(use_search, use_code_execution)
+                response = self.client.models.generate_content(model=MODEL_PRO, contents=full_prompt, config=config)
+                self.current_response = response.text
                 self.log_progress("✅ Done!")
                 return self.current_response
+
+            # --- PARALLEL EXECUTION BLOCK ---
+            self.log_progress("🚀 Generating initial response and quality criteria in parallel...")
             
-            # Quality agent creates criteria
-            criteria = self.quality_agent(full_prompt, use_search, conversation_history or [])
-            if criteria is None:
+            # Dictionary to store results from threads
+            results = {"initial_response": None, "criteria": None}
+            config = self._get_config(use_search, use_code_execution)
+
+            # Define task for generating the initial response
+            def initial_response_task():
+                try:
+                    response = self.client.models.generate_content(model=MODEL_PRO, contents=full_prompt, config=config)
+                    results["initial_response"] = response.text
+                except Exception as e:
+                    self.log_progress(f"❌ Initial response task error: {e}")
+
+            # Define task for creating quality criteria
+            def criteria_task():
+                # quality_agent already logs its own progress
+                results["criteria"] = self.quality_agent(full_prompt, use_search, conversation_history or [])
+
+            # Create and start threads
+            response_thread = Thread(target=initial_response_task)
+            criteria_thread = Thread(target=criteria_task)
+            response_thread.start()
+            criteria_thread.start()
+
+            # Wait for both threads to complete
+            response_thread.join()
+            criteria_thread.join()
+            
+            current = results.get("initial_response")
+            criteria = results.get("criteria")
+            
+            if not current:
+                raise Exception("Failed to generate an initial response.")
+            
+            self.current_response = current
+
+            if not criteria:
+                self.log_progress("⚠️ Could not generate quality criteria, skipping refinement.")
                 return self.current_response
-            
-            # Refinement loop
+            # --- END PARALLEL BLOCK ---
+
+            # Refinement loop (this part remains the same)
             for i in range(max_refinements):
                 grade = self.grader_agent(current, criteria, use_search)
                 

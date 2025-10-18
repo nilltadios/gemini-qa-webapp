@@ -366,7 +366,7 @@ def main():
 
     # Footer
     st.markdown("---")
-    st.caption("Powered by Google Gemini 2.5 Pro | Multi-Agent Quality Verification System | Thread Mode | Updated Oct,17 2025 9:33 PM")
+    st.caption("Powered by Google Gemini 2.5 Pro | Multi-Agent Quality Verification System | Thread Mode | Updated Oct,18 2025 2:14 AM")
 
 
 if __name__ == "__main__":

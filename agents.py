@@ -135,7 +135,7 @@ RESPONSE:
         
         try:
             response = self.client.models.generate_content(
-                model=MODEL_FLASH,
+                model=MODEL_PRO,
                 contents=grader_prompt,
                 config=config
             )

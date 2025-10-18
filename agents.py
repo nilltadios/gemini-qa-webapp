@@ -193,7 +193,7 @@ Provide only the improved response."""
             return None
     
     def generate_response(self, prompt, file_contexts, use_search, use_code_execution, 
-                         use_agents, max_refinements, conversation_history=None):
+                     use_agents, max_refinements, conversation_history=None):
         """Generate response with optional multi-agent refinement and code execution."""
         self.current_response = ""
         

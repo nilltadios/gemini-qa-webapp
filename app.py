@@ -385,7 +385,7 @@ def main():
     
     # Footer
     st.markdown("---")
-    st.caption("Powered by Google Gemini 2.5 Pro | Multi-Agent Quality Verification System | Thread Mode | Updated Oct 19, 2025")
+    st.caption("Powered by Google Gemini 2.5 Pro | Multi-Agent Quality Verification System | Thread Mode | Updated Oct 19, 2025 12:33 AM")
     
     # Cleanup on session end (when user closes browser)
     # Note: This will only trigger when Streamlit detects session end

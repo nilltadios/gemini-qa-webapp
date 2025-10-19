@@ -192,10 +192,10 @@ def render_conversation_thread():
         
         if message['role'] == 'user':
             with st.container():
-                st.markdown(f'<div style="background-color: #e3f2fd; padding: 15px; border-radius: 10px; margin: 10px 0;"><b>👤 You</b> <small>({timestamp})</small><br>{message["content"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color: rgba(33, 150, 243, 0.15); border: 1px solid rgba(33, 150, 243, 0.4); padding: 15px; border-radius: 10px; margin: 10px 0; color: inherit;"><b>You</b> <small>{timestamp}</small><br>{message["content"]}</div>', unsafe_allow_html=True)
         else:
             with st.container():
-                st.markdown(f'<div style="background-color: #f5f5f5; padding: 15px; border-radius: 10px; margin: 10px 0;"><b>🤖 Assistant</b> <small>({timestamp})</small><br>{message["content"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color: rgba(128, 128, 128, 0.15); border: 1px solid rgba(128, 128, 128, 0.4); padding: 15px; border-radius: 10px; margin: 10px 0; color: inherit;"><b>Assistant</b> <small>{timestamp}</small><br>{message["content"]}</div>', unsafe_allow_html=True)
     
     st.markdown("---")
 
